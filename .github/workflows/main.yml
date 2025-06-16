@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: 设置 Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
 
@@ -27,7 +27,7 @@ jobs:
           npm install hexo-cli -g
 
       - name: 缓存
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         id: cache-dependencies
         with:
           path: node_modules
