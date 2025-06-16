@@ -1,56 +1,121 @@
-name: 自动部署
+name: 自动部署 Hexo
 
 on:
   push:
     branches:
-      - master
+      - master # 你的博客源代码分支
 
+  # release 事件触发的场景，需要根据实际需求确认逻辑。
+  # 对于 Hexo 博客部署，通常只监听 push 事件到源分支就足够了。
+  # 如果你的 release 是触发博客归档或其他独立内容的，保留即可。
   release:
-	types:
-	  - published
+    types:
+      - published
 
 jobs:
   deploy:
-	runs-on: ubuntu-latest
-	steps:
-	- name: 检查分支
-	  uses: actions/checkout@v2
-	  with:
-		ref: master
+    # 始终使用最新的 LTS runner，以获得最新的 Git 和 OS 版本
+    runs-on: ubuntu-latest
+    
+    # 定义环境秘密变量
+    env:
+      TZ: 'Asia/Shanghai' # 将时区设置放到全局 env 中，方便所有 run 命令继承
+      
+    steps:
+      - name: ⬇️ Checkout source code # 使用最新版 checkout
+        uses: actions/checkout@v4
+        with:
+          # `master` 或 `main` 取决于你仓库的实际分支名。
+          # 通常，checkout 默认会检出触发工作流的分支，这里可以不强制指定 `ref`
+          # 如果你的仓库主分支是 master，可以保留。如果不是，则去除或改为对应名称。
+          ref: master
+          # 为了在推送时使用 GITHUB_TOKEN，需要开启 fetch-depth 0 避免 Git shallow clone 问题
+          # 如果你的仓库不是庞大，且不处理大的 Git 历史，可以设置为0，或根据需要优化。
+          fetch-depth: 0 
 
-	- name: 安装 Node
-	  uses: actions/setup-node@v1
-	  with:
-		node-version: "16.x"
+      - name: 🟢 Setup Node.js # 使用最新版 setup-node
+        uses: actions/setup-node@v4
+        with:
+          # 使用当前的 LTS 版本，如 20.x 或 18.x。避免 EOL 版本。
+          node-version: "20.x"
+          cache: 'npm' # 启用 npm 缓存，加快依赖安装
 
-	- name: 安装 Hexo
-	  run: |
-		export TZ='Asia/Shanghai'
-		npm install hexo-cli -g
+      # 在使用 `actions/setup-node` 启用 cache: 'npm' 后，以下独立的 `actions/cache` 步骤通常不需要了
+      # 它更适用于自定义路径的缓存。但如果你有特殊缓存需求（如其他路径），可保留但需更新版本。
+      # 针对 npm cache，setup-node 已足够。
+      # - name: 缓存 Hexo
+      #   uses: actions/cache@v4 # 升级到v4
+      #   id: cache # id 可以更具体
+      #   with:
+      #     path: node_modules
+      #     key: ${{runner.OS}}-npm-${{hashFiles('**/package-lock.json')}} # 更新 key 名
+      #     restore-keys: |
+      #       ${{runner.OS}}-npm-
 
-	- name: 缓存 Hexo
-	  uses: actions/cache@v1
-	  id: cache
-	  with:
-		path: node_modules
-		key: ${{runner.OS}}-${{hashFiles('**/package-lock.json')}}
+      - name: 📦 Install npm dependencies # 将安装 hexo-cli 和项目依赖放在一起，且确保每次都执行 npm install
+                                         # 因为 package-lock.json 可能更新
+        run: |
+          npm install # `npm install hexo-cli -g` 通常不需要，因为 Hexo 会从 package.json 加载
+                      # 如果 hexo-cli 是项目开发依赖，npm install 就会安装它。
+                      # 如果你非要全局安装，可以在前面单独一步安装。
+          
+      - name: ⚙️ Generate Hexo static files
+        run: |
+          hexo clean
+          hexo generate # `hexo g` 也可以，但 `generate` 更清晰
 
-	- name: 安装依赖
-	  if: steps.cache.outputs.cache-hit != 'true'
-	  run: |
-		npm install --save
+      - name: 🚀 Deploy to GitHub Pages # 部署部分的核心修改
+        run: |
+          cd ./public # 进入 Hexo 生成的公共目录
 
-	- name: 生成静态文件
-	  run: |
-		hexo clean
-		hexo generate
+          # 设置 Git 用户身份信息。非常关键，且放在 commit 命令之前。
+          # 建议使用 GitHub Actions Bot 身份，或你的 GitHub 用户名。
+          # `secrets.GITHUBUSERNAME` 和 `secrets.GITHUBEMAIL` 仍可用，如果你的 Git 邮箱和名称和 GitHub 一致
+          git config user.name '${{ secrets.GITHUBUSERNAME || "github-actions[bot]" }}' # 提供默认值或 bot 名称
+          git config user.email '${{ secrets.GITHUBEMAIL || "41898282+github-actions[bot]@users.noreply.github.com" }}' # 提供默认值或 bot 邮箱
 
-	- name: 部署 #此处master:master 指从本地的master分支提交到远程仓库的master分支(不是博客的分支写master即可)，若远程仓库没有对应分支则新建一个。如有其他需要，可以根据自己的需求更改。
-	  run: |
-		cd ./public
-		git init
-		git config --global user.name '${{ secrets.GITHUBUSERNAME }}'
-		git config --global user.email '${{ secrets.GITHUBEMAIL }}'
-		git add .
-		git commit -m "${{ github.event.head_commit.message }} $(date +"%Z %Y-%m-%d %A %H:%M:%S") Updated By Github Actions"
-		git push --force --quiet "https://${{ secrets.GITHUBUSERNAME }}:${{ secrets.GITHUBTOKEN }}@github.com/${{ secrets.GITHUBUSERNAME }}/${{ secrets.GITHUBUSERNAME }}.github.io.git" master:master  # GitHub配置
+          # 设置默认分支名（可选，仅消除提示）
+          git config --global init.defaultBranch main
+
+          git init # 初始化一个新的 Git 仓库在 public 目录中 (用于部署 Pages)
+          
+          git add . # 添加所有更改到暂存区
+
+          # 使用一个更可靠的提交消息，并解决可能由于 ${{ github.event.head_commit.message }} 为空导致的问题
+          commit_message="${{ github.event.head_commit.message }}"
+          if [ -z "$commit_message" ]; then
+              commit_message="Site updated by workflow from ${{ github.ref }}"
+          fi
+          # 添加时间戳到 commit 消息，让每次部署记录唯一且可追踪
+          git commit -m "$commit_message ($(date +'%Y-%m-%d %H:%M:%S %Z'))" || true # `|| true` 防止在没有更改时中断
+          
+          # ---------- GitHub Pages 部署 URL 和认证 ----------
+          # 推荐方法：使用 GitHub 自动提供的 GITHUB_TOKEN
+          # 这通常适用于部署到本仓库的 gh-pages 或 docs/ 分支的 GitHub Pages。
+          # repository URL for this approach: https://github.com/${{ github.repository }} (会自动推到本仓库)
+          # 注意：${{ github.repository }} 会解析为 "owner/repo" (例如 "your-username/your-blog-repo")
+          
+          # Push URL for PATs (secrets.GITHUBTOKEN, needs "repo" scope in PAT)
+          # repository URL: "https://your_personal_token@github.com/your-username/your-username.github.io.git"
+          
+          # 根据你的目标和 secret 的类型选择。
+          # 如果你的 Pages 仓库是 YOURUSERNAME.github.io 这样的独立仓库，需要使用 PAT (GITHUBTOKEN)。
+          # 你的 `secrets.GITHUBUSERNAME}/${{ secrets.GITHUBUSERNAME }}.github.io.git` 地址就是针对独立 Pages 仓库的
+          
+          # 旧格式: https://${{ secrets.GITHUBUSERNAME }}:${{ secrets.GITHUBTOKEN }}@github.com/${{ secrets.GITHUBUSERNAME }}/${{ secrets.GITHUBUSERNAME }}.github.io.git
+          # 这边会使用你的 secrets.GITHUBUSERNAME 作为用户，以及 secrets.GITHUBTOKEN 作为密码/PAT
+          # Git 的旧协议可能对 `user:password@` 格式更兼容。
+          # 可以使用这个：
+          git push --force --quiet "https://${{ secrets.GITHUBUSERNAME }}:${{ secrets.GITHUBTOKEN }}@github.com/${{ secrets.GITHUBUSERNAME }}/${{ secrets.GITHUBUSERNAME }}.github.io.git" master:master
+
+          # 或者，如果你不想用用户名+令牌的旧格式，直接令牌认证。更推荐：
+          # Git 通常会自动识别这种格式。你的 `secrets.GITHUBTOKEN` (即你的PAT) 
+          # 需要直接放在用户部分前面或者冒号后，并与主机名分隔。
+          # git push --force --quiet "https://oauth2:${{ secrets.GITHUBTOKEN }}@github.com/${{ secrets.GITHUBUSERNAME }}/${{ secrets.GITHUBUSERNAME }}.github.io.git" master:master
+          # 或简化为 (如果PAT允许)：
+          # git push --force --quiet "https://${{ secrets.GITHUBTOKEN }}@github.com/${{ secrets.GITHUBUSERNAME }}/${{ secrets.GITHUBUSERNAME }}.github.io.git" master:master
+
+          # 你遇到的 `master‍​‍​‍‍‍​‌​‌‌‍‌​‌‌‍` 字符问题
+          # 确保这里的 `master:master` 是手动输入的，没有多余的隐形字符！
+          # （如果你本地博客分支叫 main，部署分支叫 gh-pages，那就是 main:gh-pages）
+          
