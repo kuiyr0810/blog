@@ -120,7 +120,7 @@ theme: butterfly
 deploy:
   type: git
   repo: ssh://git@ssh.github.com:443/kuiyr0810/kuiyr0810.github.io.git
-  branch: master
+  branch: pages
 
 
 
