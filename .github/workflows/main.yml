@@ -35,8 +35,9 @@ jobs:
 
       - name: 安装插件
         if: steps.cache-dependencies.outputs.cache-hit != 'true'
-        run: 
+        run: |
           npm install
+          npm install gulp
 
       - name: 部署博客
         run: 
