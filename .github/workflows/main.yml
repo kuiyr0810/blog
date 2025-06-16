@@ -46,5 +46,5 @@ jobs:
           git config user.name "${{secrets.GIT_NAME}}"
           git config user.email "${{secrets.GIT_EMAIL}}"
           git add .
-          git commit -m "pages"
-          git push --force --quiet "https://${{secrets.GH_TOKEN}}@${{secrets.GH_REF}}" pages:pages
+          git commit -m "master"
+          git push --force --quiet "https://${{secrets.GH_TOKEN}}@${{secrets.GH_REF}}" master:master
