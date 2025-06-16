@@ -72,5 +72,4 @@ jobs:
           git add .
           git commit -m 'Update'
           git push --force --quiet 'https://${{secrets.GH_TOKEN}}@github.com/${{secrets.GH_REF}}' master‍​‍​‍‍‍​‌​‌‌‍
-Original Works by JustPureH2O. Cite https://justpureh2o.cn/articles/17536/ in your publication please. Licenced under CC-BY-NC-SA 4.0.	本文为 JustPureH2O 原创文章，转载请注明出处：https://justpureh2o.cn/articles/17536/，遵循 CC-BY-NC-SA 4.0 协议
-‍​‍​‍‍‍​‌​‌‌‍
+‍​‍​‍‍‍​‌​‌
