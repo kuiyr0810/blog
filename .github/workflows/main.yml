@@ -40,11 +40,12 @@ jobs:
 
       - name: 部署博客
         run: 
-          hexo clean && hexo g && hexo douban && hexo deploy
+          hexo clean && hexo g && hexo douban && hexo d
           cd ./public
           git init
           git config user.name "${{secrets.GIT_NAME}}"
           git config user.email "${{secrets.GIT_EMAIL}}"
+          git config --global init.defaultBranch main
           git add .
           git commit -m "Update"
           git push --force --quiet "https://${{secrets.GH_TOKEN}}@${{secrets.GH_REF}}" pages:pages
