@@ -43,8 +43,8 @@ jobs:
           hexo clean && hexo g && hexo douban
           cd ./public
           git init
-          git config user.name "kuiyr0810"
-          git config user.email "xds20214203@csuft.edu.cn"
+          git config user.name "${{secrets.GIT_NAME}}"
+          git config user.email "${{secrets.GIT_EMAIL}}"
           git add .
           git commit -m "Update"
           git push --force --quiet "https://${{secrets.GH_TOKEN}}@${{secrets.GH_REF}}" master:master
