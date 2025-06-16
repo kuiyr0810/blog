@@ -10,25 +10,20 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [20.x]
+        node-version: [18.x]
 
     steps:
       - name: 开始运行
         uses: actions/checkout@v3
-        with:
-          submodules: true
-  
-      - name: 安装Pandoc
-        uses: nikeee/setup-pandoc@v1
-  
+
       - name: 设置 Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
 
       - name: 安装 Hexo CI
-        run: |
-          export TS='Asia/Shanghai'
+        run: 
+          export TZ='Asia/Shanghai'
           npm install hexo-cli -g
 
       - name: 缓存
@@ -37,29 +32,14 @@ jobs:
         with:
           path: node_modules
           key: ${{runner.OS}}-${{hashFiles('**/package-lock.json')}}
-  
-      - name: 安装依赖插件
-        run: |
-          # Install Plugins with 'npm install'
-  
+
       - name: 安装插件
         if: steps.cache-dependencies.outputs.cache-hit != 'true'
-        run: |
+        run: 
           npm install
-  
-      - name: 配置SSH私钥
-        env:
-          HEXO_DEPLOY_PRIVATE_KEY: ${{secrets.GIT_PRI}}
-        run: |
-          mkdir -p ~/.ssh/
-          echo "$HEXO_DEPLOY_PRIVATE_KEY" > ~/.ssh/id_rsa 
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan github.com >> ~/.ssh/known_hosts  
 
       - name: 部署博客
-        run: | 
-          # 以防万一有些遗留代码还是没删
-          # hexo clean 以下的代码都是必需的，不可删去
+        run: 
           git config --global credential.helper store
           git config --global init.defaultBranch master
           git config --global user.name "${{secrets.GIT_NAME}}"
@@ -71,4 +51,4 @@ jobs:
           git init
           git add .
           git commit -m 'Update'
-          git push --force --quiet "https://${{secrets.GH_TOKEN}}@${{secrets.GH_REF}}" master:master​
+          git push --force --quiet 'https://${{secrets.GH_TOKEN}}@github.com/${{secrets.GH_REF}}' master‍​‍​‍‍‍​‌​‌‌‍‌​‌‌‍
