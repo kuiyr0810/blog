@@ -40,7 +40,7 @@ jobs:
 
       - name: 部署博客
         run: 
-          hexo clean && hexo g && hexo d
+          hexo clean && hexo g && hexo douban
           cd ./public
           git init
           git config user.name "kuiyr0810"
