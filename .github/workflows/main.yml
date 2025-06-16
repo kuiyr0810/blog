@@ -37,11 +37,10 @@ jobs:
         if: steps.cache-dependencies.outputs.cache-hit != 'true'
         run: |
           npm install
-          npm install gulp
 
       - name: 部署博客
         run: 
-          hexo clean && hexo g && hexo douban && gulp
+          hexo clean && hexo g && hexo d
           cd ./public
           git init
           git config user.name "${{secrets.GIT_NAME}}"
